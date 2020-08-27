@@ -9,10 +9,15 @@ myVideo.muted = true;
 var peer = new Peer(undefined, {
   path: "/peerjs",
   host: "/",
-  port: "443",
+  port: "3030",
 });
 
 let myVideoStream;
+
+var getUserMedia =
+  navigator.getUserMedia ||
+  navigator.webkitGetUserMedia ||
+  navigator.mozGetUserMedia;
 
 navigator.mediaDevices
   .getUserMedia({
@@ -52,6 +57,22 @@ navigator.mediaDevices
     });
   });
 
+peer.on("call", function (call) {
+  getUserMedia(
+    { video: true, audio: true },
+    function (stream) {
+      call.answer(stream); // Answer the call with an A/V stream.
+      const video = document.createElement("video");
+      call.on("stream", function (remoteStream) {
+        addVideoStream(video, remoteStream);
+      });
+    },
+    function (err) {
+      console.log("Failed to get local stream", err);
+    }
+  );
+});
+
 peer.on("open", (id) => {
   socket.emit("join-room", ROOM_ID, id);
 });
@@ -59,9 +80,9 @@ peer.on("open", (id) => {
 // CHAT
 
 const connectToNewUser = (userId, streams) => {
-  const call = peer.call(userId, streams);
+  var call = peer.call(userId, streams);
   console.log(call);
-  const video = document.createElement("video");
+  var video = document.createElement("video");
   call.on("stream", (userVideoStream) => {
     console.log(userVideoStream);
     addVideoStream(video, userVideoStream);
@@ -75,6 +96,13 @@ const addVideoStream = (videoEl, stream) => {
   });
 
   videoGrid.append(videoEl);
+  let totalUsers = document.getElementsByTagName("video").length;
+  if (totalUsers > 1) {
+    for (let index = 0; index < totalUsers; index++) {
+      document.getElementsByTagName("video")[index].style.width =
+        100 / totalUsers + "%";
+    }
+  }
 };
 
 const playStop = () => {
